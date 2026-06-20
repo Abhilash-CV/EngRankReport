@@ -102,7 +102,7 @@ if all([
             st.error("❌ 'YEARPASS' column not found in marks file. Available columns: " + ", ".join(marks.columns))
             st.stop()
         
-        # Rename columns to standard names
+        # Rename columns to standard names FIRST, before dropping duplicates
         marks = marks.rename(columns={
             appl_no_col: 'ApplNo',
             board_col: 'BOARD',
@@ -116,7 +116,7 @@ if all([
         if che_col and che_col != 'CHE_MARK':
             marks = marks.rename(columns={che_col: 'CHE_MARK'})
         
-        # Remove duplicate application records
+        # Remove duplicate application records - NOW ApplNo column exists
         marks = marks.drop_duplicates(
             subset=["ApplNo"],
             keep="first"
