@@ -82,7 +82,7 @@ if all([
             st.write("**Submarks Columns:**", list(submarks.columns))
         
         # Find key columns with possible name variations
-        appl_no_col = get_column(marks, ['ApplNo', 'ApplicationNo', 'APPLNO', 'Application Number'])
+        appl_no_col = get_column(marks, ['APPLNO', 'ApplicationNo', 'APPLNO', 'Application Number'])
         board_col = get_column(marks, ['BOARD', 'Board'])
         year_col = get_column(marks, ['YEARPASS', 'YearPass', 'Year', 'YEAR'])
         maths_col = get_column(marks, ['MATHS_MARK', 'Maths_Mark', 'MATHS', 'Maths'])
