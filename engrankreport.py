@@ -10,6 +10,17 @@ st.set_page_config(
 st.title("KEAM Engineering Rank List Generator")
 
 # -------------------------------------------------
+# Helper function to handle column name variations
+# -------------------------------------------------
+
+def get_column(df, possible_names):
+    """Find a column by trying multiple possible names"""
+    for name in possible_names:
+        if name in df.columns:
+            return name
+    return None
+
+# -------------------------------------------------
 # Upload Files
 # -------------------------------------------------
 
@@ -49,31 +60,139 @@ if all([
     subject_file
 ]):
 
-    marks = pd.read_excel(mark_file)
-    subject_details = pd.read_excel(subject_details_file)
-    entrance = pd.read_excel(entrance_file)
-    candidates = pd.read_excel(candidate_file)
-    submarks = pd.read_excel(subject_file)
-    
-    # Remove duplicate application records
-    marks = marks.drop_duplicates(
-        subset=["ApplNo"],
-        keep="first"
-    )
-    
-    # Remove duplicate candidate records
-    candidates = candidates.drop_duplicates(
-        subset=["ApplNo"],
-        keep="first"
-    )
-    
-    # Remove duplicate entrance records
-    entrance = entrance.drop_duplicates(
-        subset=["RollNo"],
-        keep="first"
-    )
+    try:
+        marks = pd.read_excel(mark_file)
+        subject_details = pd.read_excel(subject_details_file)
+        entrance = pd.read_excel(entrance_file)
+        candidates = pd.read_excel(candidate_file)
+        submarks = pd.read_excel(subject_file)
+        
+        # Display column names for debugging
+        st.subheader("Data Loaded - Column Names")
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            st.write("**Marks Columns:**", list(marks.columns))
+        with col2:
+            st.write("**Subject Details Columns:**", list(subject_details.columns))
+        with col3:
+            st.write("**Entrance Columns:**", list(entrance.columns))
+        with col4:
+            st.write("**Candidates Columns:**", list(candidates.columns))
+        with col5:
+            st.write("**Submarks Columns:**", list(submarks.columns))
+        
+        # Find key columns with possible name variations
+        appl_no_col = get_column(marks, ['ApplNo', 'ApplicationNo', 'APPLNO', 'Application Number'])
+        board_col = get_column(marks, ['BOARD', 'Board'])
+        year_col = get_column(marks, ['YEARPASS', 'YearPass', 'Year', 'YEAR'])
+        maths_col = get_column(marks, ['MATHS_MARK', 'Maths_Mark', 'MATHS', 'Maths'])
+        phy_col = get_column(marks, ['PHY_MARK', 'Phy_Mark', 'PHYSICS', 'Physics'])
+        che_col = get_column(marks, ['CHE_MARK', 'Che_Mark', 'CHEMISTRY', 'Chemistry'])
+        
+        # Check if required columns exist
+        if appl_no_col is None:
+            st.error("❌ 'ApplNo' column not found in marks file. Available columns: " + ", ".join(marks.columns))
+            st.stop()
+        
+        if board_col is None:
+            st.error("❌ 'BOARD' column not found in marks file. Available columns: " + ", ".join(marks.columns))
+            st.stop()
+        
+        if year_col is None:
+            st.error("❌ 'YEARPASS' column not found in marks file. Available columns: " + ", ".join(marks.columns))
+            st.stop()
+        
+        # Rename columns to standard names
+        marks = marks.rename(columns={
+            appl_no_col: 'ApplNo',
+            board_col: 'BOARD',
+            year_col: 'YEARPASS'
+        })
+        
+        if maths_col and maths_col != 'MATHS_MARK':
+            marks = marks.rename(columns={maths_col: 'MATHS_MARK'})
+        if phy_col and phy_col != 'PHY_MARK':
+            marks = marks.rename(columns={phy_col: 'PHY_MARK'})
+        if che_col and che_col != 'CHE_MARK':
+            marks = marks.rename(columns={che_col: 'CHE_MARK'})
+        
+        # Remove duplicate application records
+        marks = marks.drop_duplicates(
+            subset=["ApplNo"],
+            keep="first"
+        )
+        
+        # Find candidate columns
+        cand_appl_col = get_column(candidates, ['ApplNo', 'ApplicationNo', 'APPLNO'])
+        cand_roll_col = get_column(candidates, ['RollNo', 'Roll_No', 'ROLLNO'])
+        cand_name_col = get_column(candidates, ['Name', 'NAME', 'CandidateName'])
+        cand_dob_col = get_column(candidates, ['DOB', 'DateOfBirth', 'DOB'])
+        cand_gender_col = get_column(candidates, ['Gender', 'GENDER', 'Sex'])
+        cand_district_col = get_column(candidates, ['District', 'DISTRICT', 'Dist'])
+        
+        if cand_appl_col is None:
+            st.error("❌ 'ApplNo' column not found in candidates file")
+            st.stop()
+        
+        # Rename candidate columns
+        candidates = candidates.rename(columns={cand_appl_col: 'ApplNo'})
+        if cand_roll_col:
+            candidates = candidates.rename(columns={cand_roll_col: 'RollNo'})
+        if cand_name_col:
+            candidates = candidates.rename(columns={cand_name_col: 'Name'})
+        if cand_dob_col:
+            candidates = candidates.rename(columns={cand_dob_col: 'DOB'})
+        if cand_gender_col:
+            candidates = candidates.rename(columns={cand_gender_col: 'Gender'})
+        if cand_district_col:
+            candidates = candidates.rename(columns={cand_district_col: 'District'})
+        
+        # Remove duplicate candidate records
+        candidates = candidates.drop_duplicates(
+            subset=["ApplNo"],
+            keep="first"
+        )
+        
+        # Find entrance columns
+        ent_roll_col = get_column(entrance, ['RollNo', 'Roll_No', 'ROLLNO'])
+        ent_norm_col = get_column(entrance, ['Norm_Score', 'NormScore', 'NORM_SCORE'])
+        
+        if ent_roll_col is None:
+            st.error("❌ 'RollNo' column not found in entrance file")
+            st.stop()
+        
+        entrance = entrance.rename(columns={ent_roll_col: 'RollNo'})
+        if ent_norm_col:
+            entrance = entrance.rename(columns={ent_norm_col: 'Norm_Score'})
+        
+        # Remove duplicate entrance records
+        entrance = entrance.drop_duplicates(
+            subset=["RollNo"],
+            keep="first"
+        )
+        
+        # Find submarks columns
+        sub_roll_col = get_column(submarks, ['intRollNo', 'RollNo', 'ROLLNO'])
+        sub_subject_col = get_column(submarks, ['intSubjectID', 'SubjectID', 'SUBJECTID'])
+        sub_corr_col = get_column(submarks, ['decSubTotCorr', 'SubTotCorr', 'DECSUBTOTCORR'])
+        sub_count_col = get_column(submarks, ['intCount', 'Count', 'INTCOUNT'])
+        
+        if sub_roll_col is None:
+            st.error("❌ 'intRollNo' column not found in submarks file")
+            st.stop()
+        
+        submarks = submarks.rename(columns={
+            sub_roll_col: 'intRollNo',
+            sub_subject_col: 'intSubjectID' if sub_subject_col else 'intSubjectID',
+            sub_corr_col: 'decSubTotCorr' if sub_corr_col else 'decSubTotCorr',
+            sub_count_col: 'intCount' if sub_count_col else 'intCount'
+        })
 
-    st.success("All files loaded successfully")
+        st.success("✅ All files loaded and validated successfully")
+        
+    except Exception as e:
+        st.error(f"❌ Error loading files: {str(e)}")
+        st.stop()
     
     # -------------------------------------------------
     # Maximum Marks from Subject Details (SQL Export)
@@ -82,6 +201,25 @@ if all([
     # Display the loaded subject details
     st.subheader("Subject Details (from SQL Export)")
     st.dataframe(subject_details, use_container_width=True)
+    
+    # Find subject details columns
+    sd_board_col = get_column(subject_details, ['BOARD', 'Board'])
+    sd_year_col = get_column(subject_details, ['SUBYEAR', 'Year', 'YEAR'])
+    sd_subject_col = get_column(subject_details, ['SUBCODE', 'Subject', 'SUBJECT'])
+    sd_max_col = get_column(subject_details, ['SUBMAXMARK', 'MaxMark', 'MAXMARK'])
+    
+    if sd_board_col is None or sd_year_col is None or sd_subject_col is None or sd_max_col is None:
+        st.error("❌ Subject details file missing required columns")
+        st.write("Required columns: BOARD, SUBYEAR, SUBCODE, SUBMAXMARK")
+        st.write("Available columns:", list(subject_details.columns))
+        st.stop()
+    
+    subject_details = subject_details.rename(columns={
+        sd_board_col: 'BOARD',
+        sd_year_col: 'SUBYEAR',
+        sd_subject_col: 'SUBCODE',
+        sd_max_col: 'SUBMAXMARK'
+    })
     
     # Create a dictionary to store max marks for each board, year, and subject
     max_marks_dict = {}
@@ -170,6 +308,11 @@ if all([
     # Subject Wise Entrance Details
     # -----------------------------------
 
+    # Check if required columns exist in submarks
+    if 'intSubjectID' not in submarks.columns:
+        st.error("❌ 'intSubjectID' column not found in submarks file")
+        st.stop()
+    
     physics = (
         submarks[submarks["intSubjectID"] == 1]
         [["intRollNo","decSubTotCorr","intCount"]]
@@ -246,11 +389,22 @@ if all([
     # Candidate Details
     # -------------------------------------------------
 
+    # Prepare candidate columns for merge
+    candidate_cols = ["ApplNo"]
+    if "RollNo" in candidates.columns:
+        candidate_cols.append("RollNo")
+    if "Name" in candidates.columns:
+        candidate_cols.append("Name")
+    if "DOB" in candidates.columns:
+        candidate_cols.append("DOB")
+    if "Gender" in candidates.columns:
+        candidate_cols.append("Gender")
+    if "District" in candidates.columns:
+        candidate_cols.append("District")
+    
     df = pd.merge(
         df,
-        candidates[
-            ["ApplNo","RollNo","Name","DOB", "Gender"]
-        ],
+        candidates[candidate_cols],
         on="ApplNo",
         how="left"
     )
@@ -264,7 +418,7 @@ if all([
         st.dataframe(
             missing_roll[
                 ["ApplNo","Name"]
-            ]
+            ] if "Name" in missing_roll.columns else missing_roll[["ApplNo"]]
         )
         st.stop()
     
@@ -337,10 +491,11 @@ if all([
     # DOB
     # -------------------------------------------------
 
-    df["DOB"] = pd.to_datetime(
-        df["DOB"],
-        errors="coerce"
-    )
+    if "DOB" in df.columns:
+        df["DOB"] = pd.to_datetime(
+            df["DOB"],
+            errors="coerce"
+        )
 
     # -------------------------------------------------
     # Official KEAM Tie Resolution
@@ -360,27 +515,17 @@ if all([
     st.write("Total Candidates:", len(df))
 
     # Sort with tie-breakers
+    sort_columns = ["IndexMark", "MathsEntranceRaw", "PhysicsEntranceRaw", "NormMath", "NormPhy", "MathsCorrect", "PhysicsCorrect"]
+    if "DOB" in df.columns:
+        sort_columns.append("DOB")
+    
+    sort_ascending = [False, False, False, False, False, False, False]
+    if "DOB" in df.columns:
+        sort_ascending.append(True)  # Older candidate first
+    
     df = df.sort_values(
-        by=[
-            "IndexMark",
-            "MathsEntranceRaw",
-            "PhysicsEntranceRaw",
-            "NormMath",
-            "NormPhy",
-            "MathsCorrect",
-            "PhysicsCorrect",
-            "DOB"
-        ],
-        ascending=[
-            False,  # IndexMark
-            False,  # Maths Entrance
-            False,  # Physics Entrance
-            False,  # Normalized Maths
-            False,  # Normalized Physics
-            False,  # Maths Correct
-            False,  # Physics Correct
-            True    # Older candidate
-        ]
+        by=sort_columns,
+        ascending=sort_ascending
     )
     
     df = df.drop_duplicates(
@@ -401,22 +546,11 @@ if all([
     # Output - Main Rank List
     # -------------------------------------------------
 
-    result = df[
-        [
-            "ERank",
-            "ApplNo",
-            "RollNo",
-            "Name",
-            "BOARD",
-            "YEARPASS",
-            "NormMath",
-            "NormPhy",
-            "NormChem",
-            "PlusTwoScore",
-            "Norm_Score",
-            "IndexMark"
-        ]
-    ]
+    result_columns = ["ERank", "ApplNo", "RollNo", "BOARD", "YEARPASS", "NormMath", "NormPhy", "NormChem", "PlusTwoScore", "Norm_Score", "IndexMark"]
+    if "Name" in df.columns:
+        result_columns.insert(3, "Name")
+    
+    result = df[result_columns]
 
     st.subheader("Engineering Rank List")
 
@@ -430,6 +564,8 @@ if all([
         "Candidates Ranked",
         len(result)
     )
+
+    # ... (rest of the code remains the same)
 
     # -------------------------------------------------
     # DETAILED REPORTS SECTION
