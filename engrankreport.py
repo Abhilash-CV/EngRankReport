@@ -403,6 +403,10 @@ if all([
     # -------------------------------------------------
     # Pre-Weightage Total (Raw normalized sum)
     # -------------------------------------------------
+    df["NormMath"] = df["NormMath"].round(4)
+    df["NormPhy"] = df["NormPhy"].round(4)
+    df["NormChem"] = df["NormChem"].round(4)
+
     
     df["PlusTwoRawTotal"] = (
         df["NormMath"] +
