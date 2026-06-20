@@ -401,6 +401,16 @@ if all([
     ) / df["CHEMAXMARK"]
 
     # -------------------------------------------------
+    # Pre-Weightage Total (Raw normalized sum)
+    # -------------------------------------------------
+    
+    df["PlusTwoRawTotal"] = (
+        df["NormMath"] +
+        df["NormPhy"] +
+        df["NormChem"]
+    ).round(4)
+
+    # -------------------------------------------------
     # Weightage 5:3:2
     # -------------------------------------------------
 
@@ -522,16 +532,9 @@ if all([
     df["NormMath"] = df["NormMath"].round(4)
     df["NormPhy"] = df["NormPhy"].round(4)
     df["NormChem"] = df["NormChem"].round(4)
-
-    df["PlusTwoScore"] = (
-        df["PlusTwoScore"]
-        .round(4)
-    )
-
-    df["IndexMark"] = (
-        df["IndexMark"]
-        .round(4)
-    )
+    df["PlusTwoRawTotal"] = df["PlusTwoRawTotal"].round(4)
+    df["PlusTwoScore"] = df["PlusTwoScore"].round(4)
+    df["IndexMark"] = df["IndexMark"].round(4)
 
     # -------------------------------------------------
     # DOB
@@ -592,7 +595,9 @@ if all([
     # Output - Main Rank List
     # -------------------------------------------------
 
-    result_columns = ["ERank", "ApplNo", "RollNo", "BOARD", "YEARPASS", "NormMath", "NormPhy", "NormChem", "PlusTwoScore", "Norm_Score", "IndexMark"]
+    result_columns = ["ERank", "ApplNo", "RollNo", "BOARD", "YEARPASS", 
+                      "NormMath", "NormPhy", "NormChem", 
+                      "PlusTwoRawTotal", "PlusTwoScore", "Norm_Score", "IndexMark"]
     if "Name" in df.columns:
         result_columns.insert(3, "Name")
     
@@ -875,7 +880,7 @@ if all([
             st.metric("Std Dev", f"{top_100['IndexMark'].std():.2f}")
         
         # Top 100 candidates list
-        top_cols = ['ERank', 'BOARD', 'PlusTwoScore', 'Norm_Score', 'IndexMark']
+        top_cols = ['ERank', 'BOARD', 'PlusTwoRawTotal', 'PlusTwoScore', 'Norm_Score', 'IndexMark']
         if 'Name' in df.columns:
             top_cols.insert(1, 'Name')
         
@@ -959,10 +964,11 @@ if all([
         
         category_stats = df.groupby('Score_Category').agg({
             'ERank': 'count',
+            'PlusTwoRawTotal': 'mean',
             'PlusTwoScore': 'mean',
             'Norm_Score': 'mean'
         }).reset_index()
-        category_stats.columns = ['Score Range', 'Count', 'Avg Plus Two', 'Avg Entrance']
+        category_stats.columns = ['Score Range', 'Count', 'Avg Raw Total', 'Avg Plus Two', 'Avg Entrance']
         
         st.dataframe(category_stats, use_container_width=True)
 
@@ -988,7 +994,7 @@ if all([
             tie_cols.insert(2, 'Name')
         reports['Tie_Candidates'] = tied_marks[tie_cols]
     if 'top_100' in locals():
-        top_cols = ['ERank', 'BOARD', 'PlusTwoScore', 'Norm_Score', 'IndexMark']
+        top_cols = ['ERank', 'BOARD', 'PlusTwoRawTotal', 'PlusTwoScore', 'Norm_Score', 'IndexMark']
         if 'Name' in df.columns:
             top_cols.insert(1, 'Name')
         reports['Top_100'] = top_100[top_cols]
