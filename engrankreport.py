@@ -560,17 +560,50 @@ if all([
     st.write("Total Candidates:", len(df))
 
     # Sort with tie-breakers
-    sort_columns = ["IndexMark", "MathsEntranceRaw", "PhysicsEntranceRaw", "NormMath", "NormPhy", "MathsCorrect", "PhysicsCorrect"]
+        # -------------------------------------------------
+    # Official KEAM Tie Resolution (in correct order)
+    # -------------------------------------------------
+
+    required_columns = [
+        "MathsEntranceRaw",
+        "PhysicsEntranceRaw",
+        "MathsCorrect",
+        "PhysicsCorrect"
+    ]
+
+    for col in required_columns:
+        if col not in df.columns:
+            df[col] = 0
+
+    st.write("Total Candidates:", len(df))
+
+    # Sort with tie-breakers in the CORRECT KEAM order
+    sort_columns = [
+        "IndexMark",           # Primary: Total Index Mark (descending)
+        "MathsEntranceRaw",    # 1st tie-breaker: Higher Maths entrance raw score
+        "PhysicsEntranceRaw",  # 2nd tie-breaker: Higher Physics entrance raw score
+        "NormMath",            # 3rd tie-breaker: Higher Normalized Maths mark
+        "NormPhy",             # 4th tie-breaker: Higher Normalized Physics mark
+        "MathsCorrect",        # 5th tie-breaker: Higher correct responses in Maths
+        "PhysicsCorrect"       # 6th tie-breaker: Higher correct responses in Physics
+    ]
+    
+    # All tie-breakers are descending (higher is better)
+    sort_ascending = [False, False, False, False, False, False, False]
+    
+    # Add DOB as final tie-breaker (older candidate first)
     if "DOB" in df.columns:
         sort_columns.append("DOB")
-    
-    sort_ascending = [False, False, False, False, False, False, False]
-    if "DOB" in df.columns:
-        sort_ascending.append(True)  # Older candidate first
+        sort_ascending.append(True)  # Older candidate first (ascending = older)
     
     df = df.sort_values(
         by=sort_columns,
         ascending=sort_ascending
+    )
+    
+    df = df.drop_duplicates(
+        subset=["ApplNo"],
+        keep="first"
     )
     
     df = df.drop_duplicates(
