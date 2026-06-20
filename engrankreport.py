@@ -18,8 +18,8 @@ mark_file = st.file_uploader(
     type=["xlsx"]
 )
 
-max_file = st.file_uploader(
-    "maximummarks.xlsx",
+subject_details_file = st.file_uploader(
+    "subjectdetails.xlsx (SQL Query Export)",
     type=["xlsx"]
 )
 
@@ -43,14 +43,14 @@ subject_file = st.file_uploader(
 
 if all([
     mark_file,
-    max_file,
+    subject_details_file,
     entrance_file,
     candidate_file,
     subject_file
 ]):
 
     marks = pd.read_excel(mark_file)
-    maxmarks = pd.read_excel(max_file)
+    subject_details = pd.read_excel(subject_details_file)
     entrance = pd.read_excel(entrance_file)
     candidates = pd.read_excel(candidate_file)
     submarks = pd.read_excel(subject_file)
@@ -74,6 +74,97 @@ if all([
     )
 
     st.success("All files loaded successfully")
+    
+    # -------------------------------------------------
+    # Maximum Marks from Subject Details (SQL Export)
+    # -------------------------------------------------
+    
+    # Display the loaded subject details
+    st.subheader("Subject Details (from SQL Export)")
+    st.dataframe(subject_details, use_container_width=True)
+    
+    # Create a dictionary to store max marks for each board, year, and subject
+    max_marks_dict = {}
+    
+    for _, row in subject_details.iterrows():
+        board = row['BOARD']
+        year = row['SUBYEAR']
+        subject = row['SUBCODE']
+        max_mark = row['SUBMAXMARK']
+        
+        if board not in max_marks_dict:
+            max_marks_dict[board] = {}
+        if year not in max_marks_dict[board]:
+            max_marks_dict[board][year] = {}
+        
+        max_marks_dict[board][year][subject] = max_mark
+    
+    # Function to get max mark for a specific board, year, and subject
+    def get_max_mark(board, year, subject):
+        try:
+            return max_marks_dict[board][year][subject]
+        except KeyError:
+            return np.nan
+    
+    # Apply max marks to the dataframe
+    df = marks.copy()
+    
+    # Add columns for maximum marks
+    df['MATMAXMARK'] = df.apply(
+        lambda row: get_max_mark(row['BOARD'], row['YEARPASS'], 'MT'), 
+        axis=1
+    )
+    df['PHYMAXMARK'] = df.apply(
+        lambda row: get_max_mark(row['BOARD'], row['YEARPASS'], 'PH'), 
+        axis=1
+    )
+    df['CHEMAXMARK'] = df.apply(
+        lambda row: get_max_mark(row['BOARD'], row['YEARPASS'], 'CH'), 
+        axis=1
+    )
+    
+    missing_max = df[
+        (df["MATMAXMARK"].isna()) | 
+        (df["PHYMAXMARK"].isna()) | 
+        (df["CHEMAXMARK"].isna())
+    ]
+    
+    if len(missing_max) > 0:
+        st.error(
+            f"⚠️ Missing board/year maximum marks for {len(missing_max)} candidates"
+        )
+        st.write("**Candidates with missing maximum marks:**")
+        st.dataframe(
+            missing_max[
+                ["ApplNo", "BOARD", "YEARPASS"]
+            ],
+            use_container_width=True
+        )
+        
+        # Show available max marks for reference
+        st.subheader("Available Maximum Marks in Database")
+        pivot_max_marks = subject_details.pivot_table(
+            index=['BOARD', 'SUBYEAR'],
+            columns='SUBCODE',
+            values='SUBMAXMARK'
+        ).reset_index()
+        st.dataframe(pivot_max_marks, use_container_width=True)
+        
+        # List unique board-year combinations in marks
+        st.subheader("Board-Year Combinations in Candidate Data")
+        marks_combos = marks[['BOARD', 'YEARPASS']].drop_duplicates().sort_values(['BOARD', 'YEARPASS'])
+        st.dataframe(marks_combos, use_container_width=True)
+        
+        st.stop()
+    
+    # Display the max marks being used
+    st.subheader("Maximum Marks Configuration Applied")
+    pivot_max_marks = subject_details.pivot_table(
+        index=['BOARD', 'SUBYEAR'],
+        columns='SUBCODE',
+        values='SUBMAXMARK'
+    ).reset_index()
+    st.dataframe(pivot_max_marks, use_container_width=True)
     
     # -----------------------------------
     # Subject Wise Entrance Details
@@ -112,33 +203,6 @@ if all([
             "MathsCorrect":"max"
         })
     )
-    
-    # -------------------------------------------------
-    # Merge Board Maximums
-    # -------------------------------------------------
-
-    df = pd.merge(
-        marks,
-        maxmarks,
-        left_on=["BOARD", "YEARPASS"],
-        right_on=["BOARD", "YEAR"],
-        how="left"
-    )
-    
-    missing_max = df[
-        df["MATMAXMARK"].isna()
-    ]
-    
-    if len(missing_max) > 0:
-        st.error(
-            "Missing board/year maximum marks"
-        )
-        st.dataframe(
-            missing_max[
-                ["ApplNo","BOARD","YEARPASS"]
-            ]
-        )
-        st.stop()
     
     # -------------------------------------------------
     # KEAM Normalization Formula
