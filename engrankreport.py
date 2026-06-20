@@ -84,7 +84,13 @@ if all([
         # Find key columns with possible name variations
         appl_no_col = get_column(marks, ['APPLNO', 'ApplicationNo', 'APPLNO', 'Application Number'])
         board_col = get_column(marks, ['BOARD', 'Board'])
-        year_col = get_column(marks, ['YEARPASS', 'YearPass', 'Year', 'YEAR'])
+        
+        # Year columns - per subject
+        maths_year_col = get_column(marks, ['MATHS_YEAR', 'Maths_Year'])
+        phy_year_col = get_column(marks, ['PHY_YEAR', 'Phy_Year'])
+        che_year_col = get_column(marks, ['CHE_YEAR', 'Che_Year'])
+        
+        # Mark columns
         maths_col = get_column(marks, ['MATHS_MARK', 'Maths_Mark', 'MATHS', 'Maths'])
         phy_col = get_column(marks, ['PHY_MARK', 'Phy_Mark', 'PHYSICS', 'Physics'])
         che_col = get_column(marks, ['CHE_MARK', 'Che_Mark', 'CHEMISTRY', 'Chemistry'])
@@ -98,17 +104,33 @@ if all([
             st.error("❌ 'BOARD' column not found in marks file. Available columns: " + ", ".join(marks.columns))
             st.stop()
         
-        if year_col is None:
-            st.error("❌ 'YEARPASS' column not found in marks file. Available columns: " + ", ".join(marks.columns))
+        if maths_col is None:
+            st.error("❌ 'MATHS_MARK' column not found in marks file")
             st.stop()
         
-        # Rename columns to standard names FIRST, before dropping duplicates
+        if phy_col is None:
+            st.error("❌ 'PHY_MARK' column not found in marks file")
+            st.stop()
+        
+        if che_col is None:
+            st.error("❌ 'CHE_MARK' column not found in marks file")
+            st.stop()
+        
+        # Rename columns to standard names
         marks = marks.rename(columns={
             appl_no_col: 'ApplNo',
             board_col: 'BOARD',
-            year_col: 'YEARPASS'
         })
         
+        # Handle year columns
+        if maths_year_col:
+            marks = marks.rename(columns={maths_year_col: 'MATHS_YEAR'})
+        if phy_year_col:
+            marks = marks.rename(columns={phy_year_col: 'PHY_YEAR'})
+        if che_year_col:
+            marks = marks.rename(columns={che_year_col: 'CHE_YEAR'})
+        
+        # Handle mark columns
         if maths_col and maths_col != 'MATHS_MARK':
             marks = marks.rename(columns={maths_col: 'MATHS_MARK'})
         if phy_col and phy_col != 'PHY_MARK':
@@ -116,7 +138,18 @@ if all([
         if che_col and che_col != 'CHE_MARK':
             marks = marks.rename(columns={che_col: 'CHE_MARK'})
         
-        # Remove duplicate application records - NOW ApplNo column exists
+        # Create YEARPASS column (use the year from any subject, assuming they're the same)
+        if 'MATHS_YEAR' in marks.columns:
+            marks['YEARPASS'] = marks['MATHS_YEAR']
+        elif 'PHY_YEAR' in marks.columns:
+            marks['YEARPASS'] = marks['PHY_YEAR']
+        elif 'CHE_YEAR' in marks.columns:
+            marks['YEARPASS'] = marks['CHE_YEAR']
+        else:
+            st.error("❌ No year column found in marks file")
+            st.stop()
+        
+        # Remove duplicate application records
         marks = marks.drop_duplicates(
             subset=["ApplNo"],
             keep="first"
@@ -290,8 +323,12 @@ if all([
         
         # List unique board-year combinations in marks
         st.subheader("Board-Year Combinations in Candidate Data")
-        marks_combos = marks[['BOARD', 'YEARPASS']].drop_duplicates().sort_values(['BOARD', 'YEARPASS'])
+        marks_combos = df[['BOARD', 'YEARPASS']].drop_duplicates().sort_values(['BOARD', 'YEARPASS'])
         st.dataframe(marks_combos, use_container_width=True)
+        
+        # Show sample of the subject details for debugging
+        st.subheader("Subject Details Data (for debugging)")
+        st.dataframe(subject_details, use_container_width=True)
         
         st.stop()
     
@@ -564,8 +601,6 @@ if all([
         "Candidates Ranked",
         len(result)
     )
-
-    # ... (rest of the code remains the same)
 
     # -------------------------------------------------
     # DETAILED REPORTS SECTION
