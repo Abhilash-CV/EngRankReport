@@ -446,17 +446,26 @@ if all([
         how="left"
     )
     
+    # Check for missing Roll Numbers
     missing_roll = df[df["RollNo"].isna()]
-
+    
     if len(missing_roll) > 0:
-        st.error(
-            f"{len(missing_roll)} candidates have no Roll Number"
+        st.warning(
+            f"⚠️ {len(missing_roll)} candidates have no Roll Number and will be excluded from the rank list"
         )
         st.dataframe(
             missing_roll[
                 ["ApplNo","Name"]
             ] if "Name" in missing_roll.columns else missing_roll[["ApplNo"]]
         )
+        
+        # Remove candidates without Roll Numbers
+        df = df[df["RollNo"].notna()]
+        st.info(f"✅ Removed {len(missing_roll)} candidates without Roll Numbers. {len(df)} candidates remaining.")
+    
+    # Check if there are any candidates left after filtering
+    if len(df) == 0:
+        st.error("❌ No candidates with valid Roll Numbers found. Cannot generate rank list.")
         st.stop()
     
     # Maths Tie Break
@@ -489,7 +498,7 @@ if all([
     
     if len(missing_norm) > 0:
         st.warning(
-            f"{len(missing_norm)} candidates missing entrance score"
+            f"⚠️ {len(missing_norm)} candidates missing entrance score"
         )
     
     df["Norm_Score"] = pd.to_numeric(
@@ -625,30 +634,29 @@ if all([
         st.subheader("Gender Distribution Report")
         
         # Overall gender statistics
-        gender_counts = df['Gender'].value_counts()
         gender_total = len(df)
         
         col1, col2, col3, col4 = st.columns(4)
         
         # Update gender labels based on your data
-        female_count = df[df['Gender'].str.upper().str.contains('F|FEMALE', na=False)].shape[0]
-        male_count = df[df['Gender'].str.upper().str.contains('M|MALE', na=False)].shape[0]
-        trans_count = df[df['Gender'].str.upper().str.contains('T|TRANS|OTHER', na=False)].shape[0]
+        female_count = df[df['Gender'].str.upper().str.contains('F|FEMALE', na=False)].shape[0] if 'Gender' in df.columns else 0
+        male_count = df[df['Gender'].str.upper().str.contains('M|MALE', na=False)].shape[0] if 'Gender' in df.columns else 0
+        trans_count = df[df['Gender'].str.upper().str.contains('T|TRANS|OTHER', na=False)].shape[0] if 'Gender' in df.columns else 0
         
         with col1:
             st.metric("Total Candidates", gender_total)
         with col2:
-            st.metric("Female", female_count, f"{(female_count/gender_total*100):.1f}%")
+            st.metric("Female", female_count, f"{(female_count/gender_total*100):.1f}%" if gender_total > 0 else "0%")
         with col3:
-            st.metric("Male", male_count, f"{(male_count/gender_total*100):.1f}%")
+            st.metric("Male", male_count, f"{(male_count/gender_total*100):.1f}%" if gender_total > 0 else "0%")
         with col4:
-            st.metric("Transgender", trans_count, f"{(trans_count/gender_total*100):.1f}%")
+            st.metric("Transgender", trans_count, f"{(trans_count/gender_total*100):.1f}%" if gender_total > 0 else "0%")
         
         # Gender distribution in Top 100
         top_100 = df.head(100)
-        top100_female = top_100[top_100['Gender'].str.upper().str.contains('F|FEMALE', na=False)].shape[0]
-        top100_male = top_100[top_100['Gender'].str.upper().str.contains('M|MALE', na=False)].shape[0]
-        top100_trans = top_100[top_100['Gender'].str.upper().str.contains('T|TRANS|OTHER', na=False)].shape[0]
+        top100_female = top_100[top_100['Gender'].str.upper().str.contains('F|FEMALE', na=False)].shape[0] if 'Gender' in df.columns else 0
+        top100_male = top_100[top_100['Gender'].str.upper().str.contains('M|MALE', na=False)].shape[0] if 'Gender' in df.columns else 0
+        top100_trans = top_100[top_100['Gender'].str.upper().str.contains('T|TRANS|OTHER', na=False)].shape[0] if 'Gender' in df.columns else 0
         
         st.subheader("Top 100 Gender Distribution")
         col1, col2, col3 = st.columns(3)
@@ -661,9 +669,9 @@ if all([
         
         # Gender distribution in Top 1000
         top_1000 = df.head(1000)
-        top1000_female = top_1000[top_1000['Gender'].str.upper().str.contains('F|FEMALE', na=False)].shape[0]
-        top1000_male = top_1000[top_1000['Gender'].str.upper().str.contains('M|MALE', na=False)].shape[0]
-        top1000_trans = top_1000[top_1000['Gender'].str.upper().str.contains('T|TRANS|OTHER', na=False)].shape[0]
+        top1000_female = top_1000[top_1000['Gender'].str.upper().str.contains('F|FEMALE', na=False)].shape[0] if 'Gender' in df.columns else 0
+        top1000_male = top_1000[top_1000['Gender'].str.upper().str.contains('M|MALE', na=False)].shape[0] if 'Gender' in df.columns else 0
+        top1000_trans = top_1000[top_1000['Gender'].str.upper().str.contains('T|TRANS|OTHER', na=False)].shape[0] if 'Gender' in df.columns else 0
         
         st.subheader("Top 1000 Gender Distribution")
         col1, col2, col3 = st.columns(3)
@@ -675,22 +683,24 @@ if all([
             st.metric("Transgender in Top 1000", top1000_trans, f"{(top1000_trans/1000*100):.1f}%")
         
         # Summary table
-        gender_summary = pd.DataFrame({
-            'Category': ['Total', 'Top 100', 'Top 1000'],
-            'Female': [female_count, top100_female, top1000_female],
-            'Male': [male_count, top100_male, top1000_male],
-            'Transgender': [trans_count, top100_trans, top1000_trans],
-            'Total': [gender_total, 100, 1000]
-        })
-        st.dataframe(gender_summary, use_container_width=True)
+        if 'Gender' in df.columns:
+            gender_summary = pd.DataFrame({
+                'Category': ['Total', 'Top 100', 'Top 1000'],
+                'Female': [female_count, top100_female, top1000_female],
+                'Male': [male_count, top100_male, top1000_male],
+                'Transgender': [trans_count, top100_trans, top1000_trans],
+                'Total': [gender_total, 100, 1000]
+            })
+            st.dataframe(gender_summary, use_container_width=True)
         
         # Gender percentage chart (using simple text-based visualization)
-        st.subheader("Gender Distribution Visualization")
-        st.write("**Overall Distribution:**")
-        st.progress(female_count/gender_total, text=f"Female: {female_count/gender_total*100:.1f}%")
-        st.progress(male_count/gender_total, text=f"Male: {male_count/gender_total*100:.1f}%")
-        if trans_count > 0:
-            st.progress(trans_count/gender_total, text=f"Transgender: {trans_count/gender_total*100:.1f}%")
+        if gender_total > 0:
+            st.subheader("Gender Distribution Visualization")
+            st.write("**Overall Distribution:**")
+            st.progress(female_count/gender_total, text=f"Female: {female_count/gender_total*100:.1f}%")
+            st.progress(male_count/gender_total, text=f"Male: {male_count/gender_total*100:.1f}%")
+            if trans_count > 0:
+                st.progress(trans_count/gender_total, text=f"Transgender: {trans_count/gender_total*100:.1f}%")
     
     # --------------------------------------------------------------------
     # TAB 2: District-wise Analysis
@@ -699,17 +709,9 @@ if all([
         st.subheader("District-wise Analysis Report")
         
         # Check if district column exists in candidates data
-        if 'District' in candidates.columns:
-            # Merge district info
-            df_district = pd.merge(
-                df,
-                candidates[['ApplNo', 'District']],
-                on='ApplNo',
-                how='left'
-            )
-            
+        if 'District' in candidates.columns and 'District' in df.columns:
             # District-wise distribution
-            district_stats = df_district.groupby('District').agg({
+            district_stats = df.groupby('District').agg({
                 'ERank': 'count',
                 'IndexMark': 'mean'
             }).reset_index()
@@ -719,7 +721,7 @@ if all([
             st.dataframe(district_stats, use_container_width=True)
             
             # Top districts in Top 100
-            top_100_dist = df_district.head(100)
+            top_100_dist = df.head(100)
             top_districts = top_100_dist['District'].value_counts().head(10)
             
             st.subheader("Top 10 Districts in Top 100")
@@ -733,7 +735,7 @@ if all([
             )
             
             # Top districts in Top 1000
-            top_1000_dist = df_district.head(1000)
+            top_1000_dist = df.head(1000)
             top_districts_1000 = top_1000_dist['District'].value_counts().head(10)
             
             st.subheader("Top 10 Districts in Top 1000")
@@ -747,12 +749,13 @@ if all([
             )
             
             # District-wise gender distribution
-            st.subheader("District-wise Gender Distribution")
-            district_gender = pd.crosstab(
-                df_district['District'], 
-                df_district['Gender']
-            ).reset_index()
-            st.dataframe(district_gender, use_container_width=True)
+            if 'Gender' in df.columns:
+                st.subheader("District-wise Gender Distribution")
+                district_gender = pd.crosstab(
+                    df['District'], 
+                    df['Gender']
+                ).reset_index()
+                st.dataframe(district_gender, use_container_width=True)
             
         else:
             st.warning("District information not available in candidate data")
@@ -809,7 +812,7 @@ if all([
             tie_groups = tied_marks.groupby('IndexMark').agg({
                 'ERank': lambda x: list(x),
                 'ApplNo': 'count',
-                'Name': lambda x: ', '.join(x.head(5)) + ('...' if len(x) > 5 else '')
+                'Name': lambda x: ', '.join(x.head(5)) + ('...' if len(x) > 5 else '') if 'Name' in tied_marks.columns else ', '.join(x.head(5).astype(str))
             }).reset_index()
             tie_groups.columns = ['Index Mark', 'Ranks', 'Count', 'Sample Candidates']
             tie_groups = tie_groups.sort_values('Count', ascending=False)
@@ -823,10 +826,16 @@ if all([
                 
                 largest_tie = tie_groups.head(5)['Index Mark'].values
                 for mark in largest_tie:
-                    tie_candidates = df[df['IndexMark'] == mark][
-                        ['ERank', 'RollNo', 'Name', 'MathsEntranceRaw', 
-                         'PhysicsEntranceRaw', 'NormMath', 'NormPhy', 'DOB']
-                    ].sort_values(['MathsEntranceRaw', 'PhysicsEntranceRaw'], ascending=False)
+                    tie_cols = ['ERank', 'RollNo', 'MathsEntranceRaw', 'PhysicsEntranceRaw', 'NormMath', 'NormPhy']
+                    if 'Name' in df.columns:
+                        tie_cols.insert(2, 'Name')
+                    if 'DOB' in df.columns:
+                        tie_cols.append('DOB')
+                    
+                    tie_candidates = df[df['IndexMark'] == mark][tie_cols].sort_values(
+                        ['MathsEntranceRaw', 'PhysicsEntranceRaw'], 
+                        ascending=False
+                    )
                     
                     st.write(f"**Index Mark: {mark}** ({len(tie_candidates)} candidates)")
                     st.dataframe(tie_candidates, use_container_width=True)
@@ -866,29 +875,27 @@ if all([
             st.metric("Std Dev", f"{top_100['IndexMark'].std():.2f}")
         
         # Top 100 candidates list
+        top_cols = ['ERank', 'BOARD', 'PlusTwoScore', 'Norm_Score', 'IndexMark']
+        if 'Name' in df.columns:
+            top_cols.insert(1, 'Name')
+        
         st.subheader("Top 100 Candidates")
         st.dataframe(
-            top_100[['ERank', 'Name', 'BOARD', 'PlusTwoScore', 'Norm_Score', 'IndexMark']],
+            top_100[top_cols],
             use_container_width=True,
             height=400
         )
         
         # Attempt distribution (if data available)
-        if 'Attempt' in candidates.columns:
+        if 'Attempt' in candidates.columns and 'Attempt' in df.columns:
             attempt_counts = top_100['Attempt'].value_counts().reset_index()
             attempt_counts.columns = ['Attempt Number', 'Candidates']
             st.subheader("Attempt Distribution in Top 100")
             st.dataframe(attempt_counts, use_container_width=True)
         
         # Top district distribution in top 100
-        if 'District' in candidates.columns:
-            df_top100 = pd.merge(
-                top_100,
-                candidates[['ApplNo', 'District']],
-                on='ApplNo',
-                how='left'
-            )
-            top_districts = df_top100['District'].value_counts().head(5)
+        if 'District' in df.columns:
+            top_districts = top_100['District'].value_counts().head(5)
             st.subheader("Top 5 Districts in Top 100")
             st.dataframe(
                 pd.DataFrame({
@@ -968,12 +975,23 @@ if all([
     # Create a dictionary of all report dataframes
     reports = {
         'Full_Rank_List': result,
-        'Gender_Distribution': gender_summary if 'gender_summary' in locals() else pd.DataFrame(),
         'Board_Statistics': board_stats if 'board_stats' in locals() else pd.DataFrame(),
-        'Tie_Candidates': tied_marks[['ERank', 'RollNo', 'Name', 'IndexMark', 'MathsEntranceRaw', 'PhysicsEntranceRaw']] if 'tied_marks' in locals() and len(tied_marks) > 0 else pd.DataFrame(),
-        'Top_100': top_100[['ERank', 'Name', 'BOARD', 'PlusTwoScore', 'Norm_Score', 'IndexMark']] if 'top_100' in locals() else pd.DataFrame(),
         'Score_Distribution': score_dist if 'score_dist' in locals() else pd.DataFrame()
     }
+    
+    # Add optional reports if they exist
+    if 'gender_summary' in locals():
+        reports['Gender_Distribution'] = gender_summary
+    if 'tied_marks' in locals() and len(tied_marks) > 0:
+        tie_cols = ['ERank', 'RollNo', 'IndexMark', 'MathsEntranceRaw', 'PhysicsEntranceRaw']
+        if 'Name' in df.columns:
+            tie_cols.insert(2, 'Name')
+        reports['Tie_Candidates'] = tied_marks[tie_cols]
+    if 'top_100' in locals():
+        top_cols = ['ERank', 'BOARD', 'PlusTwoScore', 'Norm_Score', 'IndexMark']
+        if 'Name' in df.columns:
+            top_cols.insert(1, 'Name')
+        reports['Top_100'] = top_100[top_cols]
     
     # Create a zip file with all reports
     import io
@@ -1012,8 +1030,10 @@ if all([
     with col2:
         # Download tie candidates report
         if 'tied_marks' in locals() and len(tied_marks) > 0:
-            tie_csv = tied_marks[['ERank', 'RollNo', 'Name', 'IndexMark', 
-                                  'MathsEntranceRaw', 'PhysicsEntranceRaw']].to_csv(index=False).encode("utf-8")
+            tie_cols = ['ERank', 'RollNo', 'IndexMark', 'MathsEntranceRaw', 'PhysicsEntranceRaw']
+            if 'Name' in df.columns:
+                tie_cols.insert(2, 'Name')
+            tie_csv = tied_marks[tie_cols].to_csv(index=False).encode("utf-8")
             st.download_button(
                 label="📄 Download Tie Report (CSV)",
                 data=tie_csv,
@@ -1035,7 +1055,7 @@ if all([
     with col3:
         st.metric("Highest Score", f"{df['IndexMark'].max():.2f}")
     with col4:
-        st.metric("Tie Candidates", len(tied_marks) if 'tied_marks' in locals() else 0)
+        st.metric("Tie Candidates", len(tied_marks) if 'tied_marks' in locals() and len(tied_marks) > 0 else 0)
 
 else:
     st.info("Please upload all required files to generate the rank list and reports")
