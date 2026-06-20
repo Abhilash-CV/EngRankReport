@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as pd
 import numpy as np
 
 st.set_page_config(
@@ -395,10 +396,6 @@ if all([
     # -------------------------------------------------
     # Pre-Weightage Total (Raw normalized sum)
     # -------------------------------------------------
-    df["NormMath"] = df["NormMath"].round(4)
-    df["NormPhy"] = df["NormPhy"].round(4)
-    df["NormChem"] = df["NormChem"].round(4)
-
     
     df["PlusTwoRawTotal"] = (
         df["NormMath"] +
@@ -426,7 +423,7 @@ if all([
         df["MathWeighted"] +
         df["PhyWeighted"] +
         df["ChemWeighted"]
-    )
+    ).round(4)
 
     # -------------------------------------------------
     # Candidate Details
@@ -510,7 +507,7 @@ if all([
     df["Norm_Score"] = pd.to_numeric(
         df["Norm_Score"],
         errors="coerce"
-    ).fillna(0)
+    ).fillna(0).round(4)
 
     # -------------------------------------------------
     # Final Index Mark
@@ -520,17 +517,6 @@ if all([
         df["PlusTwoScore"] +
         df["Norm_Score"]
     )
-
-    # -------------------------------------------------
-    # Rounding
-    # -------------------------------------------------
-
-    df["NormMath"] = df["NormMath"].round(4)
-    df["NormPhy"] = df["NormPhy"].round(4)
-    df["NormChem"] = df["NormChem"].round(4)
-    df["PlusTwoRawTotal"] = df["PlusTwoRawTotal"].round(4)
-    df["PlusTwoScore"] = df["PlusTwoScore"].round(4)
-    df["IndexMark"] = df["IndexMark"].round(4)
 
     # -------------------------------------------------
     # DOB
@@ -544,24 +530,6 @@ if all([
 
     # -------------------------------------------------
     # Official KEAM Tie Resolution
-    # -------------------------------------------------
-
-    required_columns = [
-        "MathsEntranceRaw",
-        "PhysicsEntranceRaw",
-        "MathsCorrect",
-        "PhysicsCorrect"
-    ]
-
-    for col in required_columns:
-        if col not in df.columns:
-            df[col] = 0
-
-    st.write("Total Candidates:", len(df))
-
-    # Sort with tie-breakers
-        # -------------------------------------------------
-    # Official KEAM Tie Resolution (in correct order)
     # -------------------------------------------------
 
     required_columns = [
@@ -606,10 +574,8 @@ if all([
         keep="first"
     )
     
-    df = df.drop_duplicates(
-        subset=["ApplNo"],
-        keep="first"
-    )
+    # Round IndexMark after sorting (for display only)
+    df["IndexMark"] = df["IndexMark"].round(4)
     
     # -------------------------------------------------
     # Rank
@@ -801,16 +767,27 @@ if all([
         st.subheader("Board-wise Performance Report")
         
         # Board-wise distribution
-        board_stats = df.groupby('BOARD').agg({
-            'ERank': 'count',
-            'IndexMark': ['mean', 'min', 'max'],
-            'ERank': ['min', 'max']
-        }).reset_index()
-        
-        board_stats.columns = ['Board', 'Total', 'Avg Index', 'Min Index', 'Max Index', 'Best Rank', 'Worst Rank']
-        board_stats = board_stats.sort_values('Total', ascending=False)
-        
-        st.dataframe(board_stats, use_container_width=True)
+        try:
+            board_stats = df.groupby('BOARD').agg({
+                'ERank': 'count',
+                'IndexMark': ['mean', 'min', 'max'],
+                'ERank': ['min', 'max']
+            }).reset_index()
+            
+            board_stats.columns = ['Board', 'Total', 'Avg Index', 'Min Index', 'Max Index', 'Best Rank', 'Worst Rank']
+            board_stats = board_stats.sort_values('Total', ascending=False)
+            
+            st.dataframe(board_stats, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Could not generate full board statistics: {str(e)}")
+            # Fallback: simpler aggregation
+            board_stats = df.groupby('BOARD').agg({
+                'ERank': 'count',
+                'IndexMark': ['mean', 'min', 'max']
+            }).reset_index()
+            board_stats.columns = ['Board', 'Total', 'Avg Index', 'Min Index', 'Max Index']
+            board_stats = board_stats.sort_values('Total', ascending=False)
+            st.dataframe(board_stats, use_container_width=True)
         
         # Board-wise Top 100 representation
         top_100 = df.head(100)
