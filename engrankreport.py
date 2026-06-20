@@ -388,17 +388,9 @@ if all([
     # KEAM Normalization Formula
     # -------------------------------------------------
 
-    df["NormMath"] = (
-        100 * df["MATHS_MARK"]
-    ) / df["MATMAXMARK"]
-
-    df["NormPhy"] = (
-        100 * df["PHY_MARK"]
-    ) / df["PHYMAXMARK"]
-
-    df["NormChem"] = (
-        100 * df["CHE_MARK"]
-    ) / df["CHEMAXMARK"]
+    df["NormMath"] = ((100 * df["MATHS_MARK"]) / df["MATMAXMARK"]).round(4)
+    df["NormPhy"] = ((100 * df["PHY_MARK"]) / df["PHYMAXMARK"]).round(4)
+    df["NormChem"] = ((100 * df["CHE_MARK"]) / df["CHEMAXMARK"]).round(4)
 
     # -------------------------------------------------
     # Pre-Weightage Total (Raw normalized sum)
