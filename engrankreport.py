@@ -239,11 +239,11 @@ if all([
     sd_board_col = get_column(subject_details, ['BOARD', 'Board'])
     sd_year_col = get_column(subject_details, ['SUBYEAR', 'Year', 'YEAR'])
     sd_subject_col = get_column(subject_details, ['SUBCODE', 'Subject', 'SUBJECT'])
-    sd_max_col = get_column(subject_details, ['SUBMAXMARK', 'MaxMark', 'MAXMARK'])
+    sd_max_col = get_column(subject_details, ['SUBSD', 'MaxMark', 'MAXMARK'])
     
     if sd_board_col is None or sd_year_col is None or sd_subject_col is None or sd_max_col is None:
         st.error("❌ Subject details file missing required columns")
-        st.write("Required columns: BOARD, SUBYEAR, SUBCODE, SUBMAXMARK")
+        st.write("Required columns: BOARD, SUBYEAR, SUBCODE, SUBSD")
         st.write("Available columns:", list(subject_details.columns))
         st.stop()
     
@@ -251,7 +251,7 @@ if all([
         sd_board_col: 'BOARD',
         sd_year_col: 'SUBYEAR',
         sd_subject_col: 'SUBCODE',
-        sd_max_col: 'SUBMAXMARK'
+        sd_max_col: 'SUBSD'
     })
     
     # Create a dictionary to store max marks for each board, year, and subject
@@ -261,7 +261,7 @@ if all([
         board = row['BOARD']
         year = row['SUBYEAR']
         subject = row['SUBCODE']
-        max_mark = row['SUBMAXMARK']
+        max_mark = row['SUBSD']
         
         if board not in max_marks_dict:
             max_marks_dict[board] = {}
@@ -317,7 +317,7 @@ if all([
         pivot_max_marks = subject_details.pivot_table(
             index=['BOARD', 'SUBYEAR'],
             columns='SUBCODE',
-            values='SUBMAXMARK'
+            values='SUBSD'
         ).reset_index()
         st.dataframe(pivot_max_marks, use_container_width=True)
         
@@ -337,7 +337,7 @@ if all([
     pivot_max_marks = subject_details.pivot_table(
         index=['BOARD', 'SUBYEAR'],
         columns='SUBCODE',
-        values='SUBMAXMARK'
+        values='SUBSD'
     ).reset_index()
     st.dataframe(pivot_max_marks, use_container_width=True)
     
